@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nihongo Tutor Interactivo</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+
+<!-- ✨ MODAL BIENVENIDA-->
+<div class="modal-overlay" id="welcome-modal">
+  <div class="modal-box">
+    <h2>🎌 Nihongo Tutor</h2>
+    <p>Bienvenido. Antes de empezar, ingresa tu nombre. La IA corre local con Ollama y Whisper.</p>
+    <label class="modal-label">Tu nombre</label>
+    <input class="modal-input" id="modal-name" placeholder="Ej: Ana Diaz" autocomplete="off">
+    <button class="modal-btn" onclick="iniciarApp()">Comenzar â†’</button>
+    <p class="key-note">
+      Modelos esperados: gemma3:1b para texto, llava-phi3 para vision y Whisper para voz.
+    </p>
+  </div>
+</div>
+
+<header>
+  <div class="topbar">
+    <div class="brand">
+      <strong>Nihongo Tutor Interactivo</strong>
+      <span>Hablar, comprender, leer y escribir desde cero</span>
+    </div>
+    <div class="progress-pill" id="progress-pill">0 de 5 modulos</div>
+  </div>
+</header>
+
+<main>
+  <div class="layout">
+    <nav id="nav"></nav>
+
+    <div>
+
+      <!-- ✨ Módulo 1 de presentación ✨ -->
+      <section id="mod-presentacion" class="active panel">
+        <div class="panel-head">
+          <div class="kicker">Modulo 1</div>
+          <h1>Presentarte antes de estudiar caracteres</h1>
+          <p class="sub">Primero aprendes a decir quien eres, que significa cada parte y como suena. La escritura viene despues, cuando ya tienes contexto.</p>
+        </div>
+        <div class="content">
+          <div class="hero-visual">
+            <div>
+              <h3>Ruta del estudiante</h3>
+              <p class="sub">Primero habla y entiende. Luego lee. Despues escribe. Asi la memoria tiene contexto y no solo repite simbolos.</p>
+              <div class="visual-row">
+                <span class="visual-tag">🎧 Escuchar</span>
+                  <span class="visual-tag">🗣️ Repetir</span>
+                  <span class="visual-tag">🧠 Entender</span>
+                  <span class="visual-tag">✍️ Escribir</span>
+              </div>
+            </div>
+            <div class="emoji-scene">🎌</div>
+          </div>
+          <div id="presentation-list"></div>
+          <div class="practice-box">
+            <h3>Construye tu presentacion</h3>
+            <div class="grid">
+              <label>Nombre
+                <input id="student-name" placeholder="Tu nombre">
+              </label>
+              <label>Nacionalidad
+                <select id="nationality">
+                  <option value="Peruujin">peruano(a)</option>
+                  <option value="Mekishikojin">mexicano(a)</option>
+                  <option value="Supeinjin">espanol(a)</option>
+                  <option value="Chuugokujin">chino(a)</option>
+                  <option value="Nihonjin">japones(a)</option>
+                </select>
+              </label>
+            </div>
+            <button class="primary-btn" onclick="buildIntro()">Generar y escuchar mi presentacion</button>
+            <div class="result" id="intro-output"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ✨ Módulo 2 — Saludos 🗣️ -->
+      <section id="mod-saludos" class="panel">
+        <div class="panel-head">
+          <div class="kicker">Modulo 2</div>
+          <h1>Saludos para situaciones reales</h1>
+          <p class="sub">No memorices una lista suelta: aprende quien lo dice, cuando se usa y que intencion comunica.</p>
+        </div>
+        <div class="content">
+          <div id="greetings-list"></div>
+          <div class="practice-box">
+            <h3>Pregunta rapida</h3>
+            <p id="quiz-question"></p>
+            <div class="grid" id="quiz-options"></div>
+            <div class="result" id="quiz-result">Elige una respuesta.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ✨ Módulo 3 — Pronunciación 🗣️ -->
+      <section id="mod-pronuncia" class="panel">
+        <div class="panel-head">
+          <div class="kicker">Modulo 3</div>
+          <h1>Pronunciacion guiada</h1>
+          <p class="sub">Escucha, repite y compara. En Chrome algunos equipos permiten reconocimiento de voz desde el navegador.</p>
+        </div>
+        <div class="content">
+          <div class="practice-box">
+            <h3>Frase objetivo</h3>
+            <select id="speech-target"></select>
+            <div class="grid" style="margin-top:10px">
+              <button class="mini-btn" onclick="speakSelected()">Escuchar</button>
+              <button class="mini-btn" onclick="startRecognition()">Grabar mi voz</button>
+            </div>
+            <div class="status-line" id="speech-support"></div>
+            <div class="result" id="speech-result">Cuando hables, intentare mostrar lo que entendio el navegador.</div>
+          </div>
+          <div class="danger">
+            Para una correccion de pronunciacion mas seria, despues se puede conectar la API de IA: audio del estudiante, transcripcion, comparacion y retroalimentacion.
+          </div>
+        </div>
+      </section>
+
+      <!-- ✨ Módulo 4 — Hiragana ✨ -->
+      <section id="mod-hiragana" class="panel">
+        <div class="panel-head">
+          <div class="kicker">Modulo 4</div>
+          <h1>Hiragana secuencial</h1>
+        </div>
+        <div class="content">
+          <div class="sequence-row" id="kana-sequence"></div>
+          <div class="hiragana-lab">
+            <div class="kana-stage">
+              <div class="kana-stage-char" id="active-kana">ã‚</div>
+              <div class="romaji" id="active-romaji">a</div>
+              <div class="memo" id="active-memo"></div>
+              <div class="example" id="active-example"></div>
+              <div class="stroke-list" id="stroke-list"></div>
+              <div class="grid" style="grid-template-columns:1fr 1fr; margin-top:10px">
+                <button class="mini-btn" onclick="speakActiveKana()">Escuchar</button>
+                <button class="mini-btn" onclick="nextKana()">Siguiente</button>
+              </div>
+            </div>
+            <div class="draw-area">
+              <div class="draw-wrap">
+                <div class="ghost-kana" id="ghost-kana">ã‚</div>
+                <canvas id="draw-canvas"></canvas>
+              </div>
+              <div id="anim-btns-row" style="margin:6px 0;"></div>
+              <div class="grid">
+                <button class="mini-btn" onclick="clearDrawing()">Borrar</button>
+                <button class="primary-btn" onclick="checkDrawing()">Comprobar trazos</button>
+              </div>
+              <div class="result" id="draw-result">Dibuja encima de la silueta. La app registra cada trazo.</div>
+            </div>
+          </div>
+
+          <!-- Camara + papel -->
+          <div class="camera-stage" style="margin-bottom:14px">
+            <div class="video-wrap" id="video-wrap">
+              <video id="paper-video" autoplay playsinline muted></video>
+              <canvas id="paper-canvas"></canvas>
+              <div class="overlay-char-guide" id="overlay-char-guide"></div>
+              <svg class="overlay-svg-guide" id="overlay-svg-guide" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+              <div class="overlay-badge">✍🏻 MODO GUÍA SUPERPUESTA</div>
+              <div class="scan-frame"></div>
+              <div class="scan-label" id="paper-status">📷 camara apagada</div>
+            </div>
+            <div class="paper-preview">
+              <h3>Papel</h3>
+              <div class="paper-target" id="paper-target"></div>
+              <p class="romaji" id="paper-romaji">a</p>
+              <div class="grid" style="grid-template-columns:1fr; margin-top:12px">
+                <button class="mini-btn" onclick="startPaperCamera()">Encender camara</button>
+                <button class="overlay-toggle-btn" id="overlay-toggle-btn" onclick="toggleOverlay()">ðŸ”² Superponer guí­a al video</button>
+                <button class="primary-btn" onclick="capturePaper()">Capturar papel</button>
+              </div>
+              <div class="result" id="paper-result">La foto sirve para evaluar forma. Para orden de trazos se usa el lienzo digital.</div>
+            </div>
+          </div>
+
+          <!-- Grilla de hiragana -->
+          <div class="kana-grid" id="hiragana-grid"></div>
+
+          <!-- Convertidor romaji -->
+          <div class="practice-box">
+            <h3>Convertir romaji a hiragana</h3>
+            <p class="sub">Escribe una frase simple en romaji. Ejemplo: watashi wa peruujin desu</p>
+            <textarea id="romaji-input">watashi wa peruujin desu</textarea>
+            <button class="primary-btn" onclick="convertRomaji()">Convertir con lo aprendido</button>
+            <div class="result large-kana" id="hiragana-output"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ✨ Módulo 5 — Katakana ✨ -->
+      <section id="mod-katakana" class="panel">
+        <div class="panel-head">
+          <div class="kicker">Modulo 5</div>
+          <h1>Katakana comparado con hiragana</h1>
+          <p class="sub">Katakana se aprende mejor relacionandolo con hiragana y con palabras extranjeras: Peru, Carlos, Alemania, idioma extranjero.</p>
+        </div>
+        <div class="content">
+          <table class="compare-table">
+            <thead>
+              <tr><th>Sonido</th><th>Hiragana</th><th>Katakana</th><th>Contexto</th></tr>
+            </thead>
+            <tbody id="katakana-table"></tbody>
+          </table>
+          <div class="practice-box">
+            <h3>Meta final del bloque</h3>
+            <p>Cuando termine hiragana, el estudiante escribira su propia presentacion en hiragana. Luego, al terminar katakana, escribira nombres y paises extranjeros en katakana.</p>
+            <div class="result large-kana" id="katakana-meta-result">わたし は [nombre] です<br>[pais] じん です</div>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- fin columna central -->
+
+    <aside class="tutor-panel" aria-label="Tutor virtual">
+      <div class="tutor-head">
+        <div class="tutor-avatar">AI</div>
+        <div>
+          <h2>Sensei-AI</h2>
+          <p>Texto: gemma3:1b. Voz: Whisper. Vision: llava-phi3.</p>
+        </div>
+      </div>
+
+      <div class="tutor-status" id="tutor-status">Listo para practicar en espanol y japones.</div>
+
+      <div class="tutor-tabs" role="tablist" aria-label="Herramientas del tutor">
+        <button class="tutor-tab active" data-tab="chat" onclick="setTutorTab('chat')">Chat</button>
+        <button class="tutor-tab" data-tab="voice" onclick="setTutorTab('voice')">Voz</button>
+        <button class="tutor-tab" data-tab="vision" onclick="setTutorTab('vision')">Vision</button>
+      </div>
+
+      <div class="tutor-pane active" id="tutor-chat-pane">
+        <div class="chat-log" id="tutor-chat-log">
+          <div class="chat-msg ai">
+            <strong>Sensei-AI</strong>
+            <span>Hajimemashite. Escribeme en espanol, romaji o japones y practicamos paso a paso.</span>
+          </div>
+        </div>
+        <div class="chat-compose">
+          <textarea id="tutor-input" placeholder="Ej: Como digo 'soy estudiante'?" rows="3"></textarea>
+          <button class="primary-btn" onclick="sendTutorMessage()">Enviar al tutor</button>
+        </div>
+      </div>
+
+      <div class="tutor-pane" id="tutor-voice-pane">
+        <div class="voice-card">
+          <h3>Practica oral</h3>
+          <p class="sub">Graba tu voz. Whisper transcribe localmente y luego el tutor responde en el chat.</p>
+          <div class="grid compact-grid">
+            <button class="mini-btn" id="voice-record-btn" onclick="toggleTutorRecording()">Grabar</button>
+            <button class="mini-btn" id="voice-conversation-btn" onclick="toggleTutorConversation()">Conversacion continua</button>
+            <button class="mini-btn" onclick="speakTutorLast()">Escuchar respuesta</button>
+          </div>
+          <div class="result" id="voice-result">Aun no hay transcripcion.</div>
+        </div>
+      </div>
+
+      <div class="tutor-pane" id="tutor-vision-pane">
+        <div class="vision-card">
+          <h3>Correccion visual</h3>
+          <p class="sub">Usa la captura del papel o el lienzo digital y llava-phi3 evaluara la forma.</p>
+          <div class="grid compact-grid">
+            <button class="mini-btn" onclick="analyzeCanvasWithTutor()">Lienzo</button>
+            <button class="mini-btn" onclick="analyzePaperWithTutor()">Foto</button>
+          </div>
+          <div class="result" id="vision-result">Elige un hiragana y envia una imagen al tutor visual.</div>
+        </div>
+      </div>
+    </aside>
+  </div><!-- fin layout -->
+</main>
+
+<!-- Scripts: primero datos, luego lOgica -->
+<script src="{{ url_for('static', filename='js/data.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
+
