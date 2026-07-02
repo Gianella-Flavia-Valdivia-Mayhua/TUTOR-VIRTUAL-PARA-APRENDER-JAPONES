@@ -7,7 +7,93 @@ Cada entrada tiene:
   - colors:  color sugerido por trazo (cyan, amarillo, rosa, azul, verde)
 """
 
+import re
+
+
 STROKE_COLORS = ["#00f5d4", "#ffd166", "#ff4fd8", "#5d8cff", "#7cff6b", "#ff9a3c"]
+
+
+def _cubic_point(p0, p1, p2, p3, t):
+    mt = 1 - t
+    return (
+        mt ** 3 * p0[0] + 3 * mt ** 2 * t * p1[0] + 3 * mt * t ** 2 * p2[0] + t ** 3 * p3[0],
+        mt ** 3 * p0[1] + 3 * mt ** 2 * t * p1[1] + 3 * mt * t ** 2 * p2[1] + t ** 3 * p3[1],
+    )
+
+
+def _quadratic_point(p0, p1, p2, t):
+    mt = 1 - t
+    return (
+        mt ** 2 * p0[0] + 2 * mt * t * p1[0] + t ** 2 * p2[0],
+        mt ** 2 * p0[1] + 2 * mt * t * p1[1] + t ** 2 * p2[1],
+    )
+
+
+def _line_points(p0, p1, steps):
+    return [
+        (
+            p0[0] + (p1[0] - p0[0]) * i / steps,
+            p0[1] + (p1[1] - p0[1]) * i / steps,
+        )
+        for i in range(1, steps + 1)
+    ]
+
+
+def svg_path_to_points(path, samples_per_curve=24):
+    """Convierte paths SVG KanjiVG M/L/Q/C en puntos simples para Turtle/canvas."""
+    tokens = re.findall(r"[MLCQZmlcqz]|-?\d+(?:\.\d+)?", path)
+    points = []
+    cursor = (0.0, 0.0)
+    command = None
+    i = 0
+
+    def read_pair(index):
+        return float(tokens[index]), float(tokens[index + 1])
+
+    while i < len(tokens):
+      token = tokens[i]
+      if re.match(r"[MLCQZmlcqz]", token):
+          command = token
+          i += 1
+          if command in "Zz":
+              continue
+
+      if command in ("M", "m"):
+          x, y = read_pair(i)
+          cursor = (cursor[0] + x, cursor[1] + y) if command == "m" else (x, y)
+          points.append(cursor)
+          i += 2
+          command = "l" if command == "m" else "L"
+      elif command in ("L", "l"):
+          x, y = read_pair(i)
+          end = (cursor[0] + x, cursor[1] + y) if command == "l" else (x, y)
+          points.extend(_line_points(cursor, end, max(6, samples_per_curve // 2)))
+          cursor = end
+          i += 2
+      elif command in ("Q", "q"):
+          p1 = read_pair(i)
+          p2 = read_pair(i + 2)
+          if command == "q":
+              p1 = (cursor[0] + p1[0], cursor[1] + p1[1])
+              p2 = (cursor[0] + p2[0], cursor[1] + p2[1])
+          points.extend(_quadratic_point(cursor, p1, p2, t / samples_per_curve) for t in range(1, samples_per_curve + 1))
+          cursor = p2
+          i += 4
+      elif command in ("C", "c"):
+          p1 = read_pair(i)
+          p2 = read_pair(i + 2)
+          p3 = read_pair(i + 4)
+          if command == "c":
+              p1 = (cursor[0] + p1[0], cursor[1] + p1[1])
+              p2 = (cursor[0] + p2[0], cursor[1] + p2[1])
+              p3 = (cursor[0] + p3[0], cursor[1] + p3[1])
+          points.extend(_cubic_point(cursor, p1, p2, p3, t / samples_per_curve) for t in range(1, samples_per_curve + 1))
+          cursor = p3
+          i += 6
+      else:
+          break
+
+    return [[round(x, 2), round(y, 2)] for x, y in points]
 
 # ── HIRAGANA ────────────────────────────────────────────────────────────────
 HIRAGANA_STROKES = {
@@ -712,7 +798,12 @@ def get_strokes(char):
         return None
     strokes = data["strokes"]
     colors  = [STROKE_COLORS[i % len(STROKE_COLORS)] for i in range(len(strokes))]
-    result  = {"strokes": strokes, "colors": colors}
+    result  = {
+        "strokes": strokes,
+        "colors": colors,
+        "points": [svg_path_to_points(path) for path in strokes],
+        "viewBox": [0, 0, 109, 109],
+    }
     if "reading" in data:
         result["reading"] = data["reading"]
         result["meaning"] = data["meaning"]
